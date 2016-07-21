@@ -4,6 +4,7 @@ import global.IIELog;
 import net.*;
 import tox.bean.IIEMessage;
 import tox.bean.KadNode;
+import tox.bean.MiddlewareData;
 import tox.bean.Record;
 
 /**
@@ -11,10 +12,15 @@ import tox.bean.Record;
  */
 public class KadPackageProcess extends Thread {
 
-	ToxPackage tox = null;
-
+	private ToxPackage tox = null;
+	private KadNode kad;
+	private MiddlewareData mdata;
+	private UDPClient client;
 	public KadPackageProcess(IIEPackage iiePackage) {
 		this.tox = ToxPackage.receiver(iiePackage);
+		this.mdata = MiddlewareData.getMiddleware();
+		this.kad = KadNode.getInstance();
+		this.client = UDPClient.getInstance();
 	}
 
 	@Override
@@ -47,7 +53,6 @@ public class KadPackageProcess extends Thread {
 		switch (ack) {
 		case Configure.KAD_ACK_REQUEST:
 			processLoginRequest();
-			System.out.println("****login***\n" + KadNode.getInstance().getBucket().show() + "\n*******");
 		}
 
 		return 0;
@@ -70,7 +75,7 @@ public class KadPackageProcess extends Thread {
 			IIEPackage iie = null;
 			// find the closest node of record;
 			Record closestor = new Record();
-			result = KadNode.getInstance().check(record, closestor);
+			result = this.kad.check(record, closestor);
 
 			// update the record info;
 			record.setIp(this.tox.getIp());
@@ -94,20 +99,21 @@ public class KadPackageProcess extends Thread {
 
 					command = this.tox.obtainFindCommandPackage(record);
 					iie = command.obtainIIEPackage(mip, mport);
-					UDPClient.getInstance().send(iie);
+					this.client.send(iie);
 					if (mip != mlip) {
 						command = this.tox.obtainFindCommandPackage(record);
 						iie = command.obtainIIEPackage(mlip, mlport);
-						UDPClient.getInstance().send(iie);
+						this.client.send(iie);
 					}
 					// send the record (login node to update its info)
 					command = this.tox.obtainFindResponsePackage(closestor, record.getNodeId());
 					iie = command.obtainIIEPackage(this.tox.getIp(), this.tox.getPort());
-					UDPClient.getInstance().send(iie);
+					this.client.send(iie);
 					return 0;
 				}
 			}
-			KadNode.getInstance().update(record);
+			this.kad.update(record);
+			this.mdata.putTimeRecord(record.getNodeId(), 1);
 		}
 		return 0;
 	}
@@ -119,7 +125,7 @@ public class KadPackageProcess extends Thread {
 		ToxPackage loginResponse = new ToxPackage();
 		this.tox.obtainResponseRegister(loginResponse);
 		IIEPackage iie = loginResponse.obtainIIEPackage(this.tox.getIp(), this.tox.getPort());
-		UDPClient.getInstance().send(iie);
+		this.client.send(iie);
 	}
 
 	/**
@@ -139,14 +145,15 @@ public class KadPackageProcess extends Thread {
 		case Configure.KAD_ACK_REQUEST:
 			Record record = new Record();
 			tox.resolveRecordInfo(record, content);
-			String st = timestamp + "" + tox.getType() + KadNode.getInstance().getNodeId();
+			String st = timestamp + "" + tox.getType() + this.kad.getNodeId();
 			if (!id.equals(st))
 				return 0;
-			if(record.getNodeId() == KadNode.getInstance().getNodeId())
+			if(record.getNodeId().equals(this.kad.getNodeId()))
 				return 0;
 			ToxPackage response = ToxPackage.obtainPingResponse(id);
 			response.obtainIIEPackage(tox.getIp(), tox.getPort());
-			KadNode.getInstance().update(record);
+			this.kad.update(record);
+			this.mdata.putTimeRecord(record.getNodeId(), 1);
 			break;
 		case Configure.KAD_ACK_RESPONSE:
 			if (System.currentTimeMillis() - timestamp > Configure.KAD_PING_DELAY)
@@ -170,7 +177,6 @@ public class KadPackageProcess extends Thread {
 		switch (ack) {
 		case Configure.KAD_ACK_REQUEST:
 			processKadFindRequest();
-			System.out.println("****Find Request***\n" + KadNode.getInstance().getBucket().show() + "\n*******");
 			break;
 		case Configure.KAD_ACK_RESPONSE:
 			processKadFindResponse();
@@ -200,7 +206,7 @@ public class KadPackageProcess extends Thread {
 		}
 		if (requestor.getNodeId() == null)  //receive info error;
 			return -1;
-		if(requestor.getNodeId().equals(KadNode.getInstance().getNodeId()))  //requestor is myself;
+		if(requestor.getNodeId().equals(this.kad.getNodeId()))  //requestor is myself;
 			return -1;
 		IIELog.d("Requestor", requestor.show());
 		String rip = requestor.getIp();
@@ -211,8 +217,8 @@ public class KadPackageProcess extends Thread {
 		}
 		if(rip != null && !rip.equals(this.tox.getIp())){
 			String lip = requestor.getLocalIp();
-			String slip = KadNode.getInstance().getLocalIp();
-			String sip = KadNode.getInstance().getIp();
+			String slip = this.kad.getLocalIp();
+			String sip = this.kad.getIp();
 			if(!ToxGlobalFunc.isInLAN(lip, slip, rip, sip)){
 				responseRegister(); // response the network info;
 				requestor.setIp(this.tox.getIp());
@@ -220,24 +226,24 @@ public class KadPackageProcess extends Thread {
 			}
 			
 		}
-		Record find = KadNode.getInstance().query(findId);
+		Record find = this.kad.query(findId);
 		ToxPackage command = null;
 		IIEPackage iie = null;
 		if (find != null) {
 			command = this.tox.obtainFindCommandPackage(requestor);
 			iie = command.obtainIIEPackage(find.getIp(), find.getPort());
-			UDPClient.getInstance().send(iie);
+			this.client.send(iie);
 			if (find.getIp() != find.getLocalIp()) {
 				command = this.tox.obtainFindCommandPackage(requestor);
 				iie = command.obtainIIEPackage(find.getLocalIp(), find.getLocalPort());
-				UDPClient.getInstance().send(iie);
+				this.client.send(iie);
 			}
 		}
 		command = this.tox.obtainFindResponsePackage(find, findId);
 		iie = command.obtainIIEPackage(this.tox.getIp(), this.tox.getPort());
-		UDPClient.getInstance().send(iie);
-		KadNode.getInstance().update(requestor);
-
+		this.client.send(iie);
+		this.kad.update(requestor);
+		this.mdata.putTimeRecord(requestor.getNodeId(), 1);
 		return 0;
 	}
 
@@ -283,9 +289,10 @@ public class KadPackageProcess extends Thread {
 		if (requestor.getNodeId() != KadNode.getInstance().getNodeId()) {
 			// ping 5 times;
 			for (int i = 0; i < 5; i++) {
-				KadNode.getInstance().ping(requestor);
+				this.kad.ping(requestor);
 			}
-			KadNode.getInstance().update(mid);
+			this.kad.update(mid);
+			this.mdata.putTimeRecord(mid.getNodeId(), 1);
 		}
 		return 0;
 	}

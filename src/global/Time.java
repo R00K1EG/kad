@@ -14,5 +14,12 @@ public class Time {
         String retStrFormatNowDate = sdFormatter.format(nowTime);
         return retStrFormatNowDate;
     }
+    
+    public static String covertToYMDHMS(long ls){
+        Date nowTime = new Date(ls);
+        SimpleDateFormat sdFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String retStrFormatNowDate = sdFormatter.format(nowTime);
+        return retStrFormatNowDate;
+    }
 
 }

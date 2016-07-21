@@ -21,7 +21,6 @@ public class PackageProcess extends Thread{
         IIELog.d("data", data);
         IIELog.d("ip", ip);
         IIELog.d("port", port + "");
-        
     }
 
     @Override

@@ -17,8 +17,10 @@ public class IIEPackage {
 	private String msg = null;
 	private String targetIp = null;
 	private int targetPort = 0;
-
+	private long tunnelId = -1;
+ 
 	public IIEPackage() {
+		this.tunnelId = -1;
 	}
 
 	public IIEPackage(int type, String msg, String ip, int port) {
@@ -26,6 +28,7 @@ public class IIEPackage {
 		this.msg = msg;
 		this.targetIp = ip;
 		this.targetPort = port;
+		this.tunnelId = -1;
 	}
 
 	/**
@@ -38,6 +41,7 @@ public class IIEPackage {
 		try {
 			json.put("type", this.getType());
 			json.put("data", this.getMsg());
+			json.put("tunnelId", this.getTunnelId());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -73,6 +77,7 @@ public class IIEPackage {
 			IIEJSONObject jsonObject = new IIEJSONObject(data);
 			iiePackage.setType(jsonObject.getInt("type"));
 			iiePackage.setMsg(jsonObject.getString("data"));
+			iiePackage.setTunnelId(jsonObject.getLong("tunnelId"));
 			//IIELog.d("Receiver", iiePackage.show());
 		} catch (Exception e) {
 			//e.printStackTrace();
@@ -96,8 +101,8 @@ public class IIEPackage {
 			IIEJSONObject jsonObject = new IIEJSONObject(data);
 			iiePackage.setType(jsonObject.getInt("type"));
 			iiePackage.setMsg(jsonObject.getString("data"));
+			iiePackage.setTunnelId(jsonObject.getLong("tunnelId"));
 		} catch (Exception e) {
-			//e.printStackTrace();
 			return null;
 		}
 		return iiePackage;
@@ -115,6 +120,18 @@ public class IIEPackage {
 		return packet;
 	}
 
+	/**
+	 * 将IIEPackage转换成String
+	 */
+	public String toString(){
+		return "IIEPackage{" + 
+				"type="+this.getType()+
+				", tunnelId=" + this.getTunnelId() +
+				", targetIp=" + this.getTargetIp() +
+				", targetPort=" + this.getTargetPort() +
+				", msg=" + this.getMsg() + "}\n";
+	}
+	
 	/**
 	 * generate a iie package;
 	 * @param type
@@ -158,4 +175,15 @@ public class IIEPackage {
 	public void setMsg(String msg) {
 		this.msg = msg;
 	}
+
+	public long getTunnelId() {
+		return tunnelId;
+	}
+
+	public void setTunnelId(long tunnelId) {
+		this.tunnelId = tunnelId;
+	}
+	
+	
+	
 }

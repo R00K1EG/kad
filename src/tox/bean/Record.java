@@ -5,14 +5,13 @@ import global.Time;
 /**
  * Created by guo on 2016/4/12.
  */
-public class Record extends Node{
+public class Record extends Node implements Cloneable{
 
     private long timestamp = 0;
     private String fingerprint = null;
 
-
     public Record(){
-
+    	this.timestamp = System.currentTimeMillis();
     }
 
     public Record(long tmp){
@@ -62,7 +61,26 @@ public class Record extends Node{
                // "\n\t time: " + Time.covertToYMD(this.getTimestamp()) +
                // "\n\t fingerprint: " + this.getFingerprint();
     }
+    
+    public String toString(){
+    	return  "Record{ID=" + this.getNodeId() +
+         ", IP=" + this.getIp() +
+         ",LocalIp=" + this.getLocalIp() +
+         ",time=" + Time.covertToYMD(this.getTimestamp()) +
+         ",fingerprint=" + this.getFingerprint() + "}\n";
+    }
 
+    public Record clone(){
+    	Record o = null;
+    	try{
+    		o = (Record)super.clone();
+    	}catch(Exception e){
+    		e.printStackTrace();
+    	}
+    	return o;	
+    }
+    
+    
     public long getTimestamp() {
         return timestamp;
     }

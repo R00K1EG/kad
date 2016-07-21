@@ -6,7 +6,11 @@ import tox.Configure;
 import tox.ToxGlobalFunc;
 import tox.ToxPackage;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import app.DefaultAppPackage;
 import global.IIELog;
@@ -23,12 +27,25 @@ public class KadNode extends Node {
 	private String pr_k = null;
 	private Bridge first = null;
 
-	public volatile static KadNode instance = null;
+	private ScheduledThreadPoolExecutor executor;
+	private MiddlewareData mdata;
 
-	public KadNode() {
-		this.bucket = new KBucket();
-		instance = this;
+	private volatile static KadNode instance;
+
+	private KadNode() {
+		this.bucket = KBucket.getBucket();
 		mq = new ConcurrentHashMap<String, IIEMessage>();
+		this.executor = new ScheduledThreadPoolExecutor(1);
+		this.mdata = MiddlewareData.getMiddleware();
+	}
+
+	public static KadNode getKadNode() {
+		if (instance == null) {
+			synchronized (KadNode.class) {
+				instance = new KadNode();
+			}
+		}
+		return instance;
 	}
 
 	/**
@@ -39,20 +56,22 @@ public class KadNode extends Node {
 	 * @return record: the record.id = id
 	 * @return record: the record.id closest the id
 	 */
-	public Record query(String id) {
+	public synchronized Record query(String id) {
 		if (this.getNodeId().equals(id))
 			return null;
 		int kt = this.getKofBucket(id);
+
 		Record result = null;
-		result = this.bucket.getRecordList()[kt].select(id);
+		result = this.bucket.find(kt, id);
+
 		int tmp = kt;
-		while (result == null && kt > 0) {
-			result = this.bucket.getRecordList()[kt].findCloseRecord(id);
+		while (result == null && kt >= 0) {
+			result = this.bucket.findClosestRecord(kt, id);
 			kt--;
 		}
 		kt = tmp;
 		while (result == null && kt < 160) {
-			result = this.bucket.getRecordList()[kt].findCloseRecord(id);
+			result = this.bucket.findClosestRecord(kt, id);
 			kt++;
 		}
 		IIELog.d("KAD_FIND", "closest node:" + result);
@@ -72,22 +91,18 @@ public class KadNode extends Node {
 		if (record.getNodeId() != null && record.getNodeId().equals(this.getNodeId()))
 			return 0;
 		int kt = this.getKofBucket(record.getNodeId());
-		DoubleLinkedList list = this.bucket.getRecordList()[kt];
-		if (list.getSize() < list.getMax()) {
-			list.add(record);
-			return 0;
-		} else {
-			new UpdateThread(kt, record).start();
-		}
-		return -1;
+		this.bucket.update(kt, record);
+		return 0;
 	}
 
-	//update the k buckets;
-	public int pinging(){
-		new PingThread().start();
-		return -1;
+	// update the k buckets;
+	public int pinging() {
+		// new PingThread().start();
+		this.executor.scheduleWithFixedDelay(new PingTask(), 0, Configure.EXECUTE_PING_TASK_TIME / 1000,
+				TimeUnit.SECONDS);
+		return 0;
 	}
-	
+
 	/**
 	 * ping between nodes
 	 * 
@@ -123,34 +138,46 @@ public class KadNode extends Node {
 		return -1;
 	}
 
-	// update the k-bucket;
-	class PingThread extends Thread {
+	/**
+	 * ping task;
+	 * 
+	 * @author guo
+	 *
+	 */
+	class PingTask implements Runnable {
 
-		public PingThread() {
+		private Map<Record, Integer> list;
 
+		public PingTask() {
+			this.list = new HashMap<Record, Integer>();
 		}
+
 		@Override
 		public void run() {
-			while (true) {
-				for (int i = 0; i < 160; i++) {
-					DoubleLinkedList tmp = getInstance().getBucket().getRecordList()[i];
-					if (tmp.getSize() != 0) {
-						for (Record r : tmp.all()) {
-							if (ping(r) == -1) {
-								tmp.remove(r);
-							}
+			mdata.startPintTask();
+			for (int i = 0; i < 160; i++) {
+				SingleBucket tmp = bucket.getSingleBucket(i);
+				if (tmp.getSize() != 0) {
+					for (Record r : tmp.all()) {
+						if (ping(r) == -1) {
+							this.list.put(r, i);
 						}
 					}
 				}
-				try{
-					Thread.sleep(30000);
-				}catch(Exception e){
-					e.printStackTrace();
+			}
+			for (Map.Entry<Record, Integer> entry : this.list.entrySet()) {
+				Record tmp = entry.getKey();
+				int k = entry.getValue();
+				if (mdata.getTimeRecord(tmp.getNodeId()) == null) {
+					bucket.remove(k, tmp);
 				}
 			}
+			this.list.clear();
+			mdata.stopPingTask();
 		}
 
 	}
+
 
 	/**
 	 * update thread when need to wait the target ack ping
@@ -166,11 +193,11 @@ public class KadNode extends Node {
 
 		@Override
 		public void run() {
-			DoubleLinkedList tmpLink = KadNode.getInstance().getBucket().getRecordList()[k];
+			SingleBucket tmpLink = KadNode.getInstance().getBucket().getSingleBucket(k);
 			Record re = tmpLink.check();
 			// tmpLink.remove();
 			if (re == null) {
-				KadNode.getInstance().getBucket().getRecordList()[k].add(record);
+				KadNode.getInstance().getBucket().getSingleBucket(k).add(record);
 				return;
 			} else {
 				String ip = re.getIp();
@@ -318,7 +345,7 @@ public class KadNode extends Node {
 		if (this.getNodeId().equals(id))
 			return;
 		int kt = this.getKofBucket(id);
-		this.bucket.getRecordList()[kt].remove(r);
+		this.bucket.getSingleBucket(kt).remove(r);
 	}
 
 	/*
@@ -425,6 +452,15 @@ public class KadNode extends Node {
 		return instance;
 	}
 
+	/**
+	 * show the k-buckets;
+	 * @return
+	 */
+	public String showKBuckets(){
+		return this.bucket.toString();
+	}
+	
+	
 	public KBucket getBucket() {
 		return bucket;
 	}

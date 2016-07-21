@@ -9,9 +9,12 @@ import java.net.DatagramSocket;
  * Created by guo on 2016/4/21.
  */
 public class PackageReceiver extends Thread{
+	private UDPClient client;
     private byte[] buffer = new byte[Configure.PACKAGE_BUFFERSIZE];
-    private DatagramSocket ds = UDPClient.getInstance().getDs();
+    private DatagramSocket ds;
     public PackageReceiver(){
+    	client = UDPClient.getInstance();
+    	this.ds = client.getDs();
     }
 
     @Override

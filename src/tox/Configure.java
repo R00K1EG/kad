@@ -30,5 +30,7 @@ public class Configure {
 
     
     public static final int SINGLE_PING_TIME = 500;
+    public static int EXECUTE_PING_TASK_TIME = 30 * 1000;
+    
     
 }

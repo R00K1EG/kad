@@ -21,8 +21,9 @@ public class ToxPackage {
 	private int port = 0;
 	private String ip = null;
 	private String msg = null;
-
+	
 	public ToxPackage() {
+		
 	}
 
 	/**
@@ -146,7 +147,7 @@ public class ToxPackage {
 	}
 
 	/**
-	 * obtain the register toxPackage£» it is used to help requester update
+	 * obtain the register toxPackageï¿½ï¿½ it is used to help requester update
 	 * itself info : ip & port;
 	 * 
 	 * @param id
