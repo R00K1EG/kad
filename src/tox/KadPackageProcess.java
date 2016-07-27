@@ -88,8 +88,8 @@ public class KadPackageProcess extends Thread {
 
 				// record is not in the k-buckets;
 				if (closestor.getNodeId().equals(record.getNodeId())) {
-					KadNode.getInstance().remove(record);
-					closestor = KadNode.getInstance().query(record.getNodeId());
+					this.kad.remove(record);
+					closestor = this.kad.query(record.getNodeId());
 				}
 				if (closestor != null) {
 					String mip = closestor.getIp();

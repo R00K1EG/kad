@@ -178,7 +178,6 @@ public class KadNode extends Node {
 
 	}
 
-
 	/**
 	 * update thread when need to wait the target ack ping
 	 */
@@ -454,13 +453,13 @@ public class KadNode extends Node {
 
 	/**
 	 * show the k-buckets;
+	 * 
 	 * @return
 	 */
-	public String showKBuckets(){
+	public String showKBuckets() {
 		return this.bucket.toString();
 	}
-	
-	
+
 	public KBucket getBucket() {
 		return bucket;
 	}

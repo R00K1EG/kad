@@ -25,9 +25,7 @@ public class PackageSingleSender extends Thread{
 				}
 				if (dpc != null) {
 					try {
-						IIELog.d("Send_data", new String(dpc.getData(), 0, dpc.getData().length));
-						IIELog.d("Send_ip", dpc.getAddress().getHostAddress());
-						IIELog.d("Send_port", dpc.getPort() + "");
+						IIELog.d("====SEND====\n" + iie);
 						UDPClient.getInstance().getDs().send(dpc);
 					} catch (Exception e) {
 						e.printStackTrace();

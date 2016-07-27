@@ -1,79 +1,126 @@
 package global;
 
-
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class IIELog {
 	
-	//put the msg info linkedqueue
-	private static void add(String i){
-		String info = Time.covertToYMD(System.currentTimeMillis()) + ":\t" + i + "\n";
-		try {
-			if(WriteFileByAppend.infos == null){
-				new WriteFileByAppend("./log.txt").start();
-			}
-			WriteFileByAppend.infos.put(info);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
 	
 	/**
-	 * log d
-	 * @param tag
-	 * @param content
+	 * Log info: pattern: [TYPE] [Time] <TAG> [MAG] <EXCEPTION>
+	 * 
 	 */
-	public static void d(String tag, String content){
-		if(Configure.DEBUG == 1){
-			String info = tag + ":\t" + content;
-			add(info);
+
+	public static void i(String msg) {
+		String info = "";
+		if ((Configure.INFO + Configure.LOG_FILE) >= 1) {
+			info = "[INFO]  " + covertToYMDHMS() + "  " + msg;
+		}
+		if (Configure.INFO == 1) {
 			System.out.println(info);
 		}
-	}
-	
-	/**
-	 * only output the debug msg;
-	 * @param content
-	 */
-	public static void d(String content){
-		if(Configure.DEBUG == 1){
-			add(content);
-			System.out.println(content);
+		if (Configure.LOG_FILE == 1) {
+			write(info);
 		}
 	}
-	
-	/**
-	 * output tag, info, and exception
-	 * @param tag
-	 * @param content
-	 * @param e
-	 */
-	public static void d(String tag, String content, Exception e){
-		if(Configure.DEBUG == 1){
-			add(tag + ":\t" + content + "\n" + e.toString());
-			System.out.println(tag + ":\t" + content + "\n" + e.toString());
+
+	public static void i(String tag, String info) {
+		String msg = "";
+		if ((Configure.INFO + Configure.LOG_FILE) >= 1) {
+			msg = "[INFO]  " + covertToYMDHMS() + " [" + tag + "] " + msg;
 		}
-	}
-	
-	/**
-	 * output information
-	 * @param msg
-	 */
-	public static void i(String msg){
-		if(Configure.INFO == 1){
-			add(msg);
+		if (Configure.INFO == 1) {
 			System.out.println(msg);
 		}
-	}
-	
-	/**
-	 * output info with tag
-	 * @param tag
-	 * @param msg
-	 */
-	public static void i(String tag, String msg){
-		if(Configure.INFO == 1){
-			add(tag + ":\t" + msg);
-			System.out.println(tag + ":\t" + msg);
+		if (Configure.LOG_FILE == 1) {
+			write(msg);
 		}
 	}
+
+	public static void i(String tag, String info, Exception e) {
+		String msg = "";
+		if ((Configure.INFO + Configure.LOG_FILE) >= 1) {
+			msg = "[INFO]  " + covertToYMDHMS() + " [" + tag + "] " + msg + "\n" + e.getMessage();
+		}
+		if (Configure.INFO == 1) {
+			System.out.println(msg);
+		}
+		if (Configure.LOG_FILE == 1) {
+			write(msg);
+		}
+	}
+
+	public static void d(String msg) {
+		String info = "";
+		if ((Configure.DEBUG + Configure.LOG_FILE) >= 1) {
+			info = "[DEBUG]  " + covertToYMDHMS() + "  " + msg;
+		}
+		if (Configure.DEBUG == 1) {
+			System.out.println(info);
+		}
+		if (Configure.LOG_FILE == 1) {
+			write(info);
+		}
+	}
+
+	public static void d(String tag, String info) {
+		String msg = "";
+		if ((Configure.DEBUG + Configure.LOG_FILE) >= 1) {
+			msg = "[DEBUG]  " + covertToYMDHMS() + " [" + tag + "] " + msg;
+		}
+		if (Configure.DEBUG == 1) {
+			System.out.println(msg);
+		}
+		if (Configure.LOG_FILE == 1) {
+			write(msg);
+		}
+	}
+
+	public static void d(String tag, String info, Exception e) {
+		String msg = "";
+		if ((Configure.DEBUG + Configure.LOG_FILE) >= 1) {
+			msg = "[DEBUG]  " + covertToYMDHMS() + " [" + tag + "] " + msg + "\n" + e.getMessage();
+		}
+		if (Configure.DEBUG == 1) {
+			System.out.println(msg);
+		}
+		if (Configure.LOG_FILE == 1) {
+			write(msg);
+		}
+	}
+
+	/**
+	 * 时间转换
+	 * 
+	 * @return
+	 */
+	public static String covertToYMDHMS() {
+		Date nowTime = new Date(System.currentTimeMillis());
+		SimpleDateFormat sdFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		String retStrFormatNowDate = sdFormatter.format(nowTime);
+		return retStrFormatNowDate;
+	}
+	
+	private static synchronized void write(String log){
+		BufferedWriter bwriter = null;
+		try {
+			FileWriter writer = new FileWriter("./kad.log.txt", true);
+			bwriter = new BufferedWriter(writer);
+			bwriter.write(log);
+			bwriter.newLine();
+			bwriter.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}finally{
+			if(bwriter != null)
+				try {
+					bwriter.close();
+				} catch (IOException e) {
+				}
+		}
+	}
+	
 }

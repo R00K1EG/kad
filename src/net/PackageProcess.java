@@ -18,14 +18,12 @@ public class PackageProcess extends Thread{
         this.data = new String(dp.getData(), 0, dp.getLength());
         this.ip = dp.getAddress().getHostAddress();
         this.port = dp.getPort();
-        IIELog.d("data", data);
-        IIELog.d("ip", ip);
-        IIELog.d("port", port + "");
     }
 
     @Override
     public void run() {
         IIEPackage iiePackage = IIEPackage.receive(this.ip, this.port, this.data);
+        IIELog.d("====RECEIVE====\n" + iiePackage);
         if(iiePackage == null)
             return;
         int type = iiePackage.getType();
